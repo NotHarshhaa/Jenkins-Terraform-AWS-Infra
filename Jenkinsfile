@@ -6,40 +6,62 @@ pipeline {
         string(name: 'AWS_REGION', defaultValue: 'us-west-2', description: 'AWS Region')
     }
     environment {
-        access_key = "${params.AWS_ACCESS_KEY_ID}"
-        secret_key = "${params.AWS_SECRET_ACCESS_KEY}"
-        region = "${params.AWS_REGION}"
+        TF_VAR_region      = "${params.AWS_REGION}"
+        TF_VAR_access_key  = "${params.AWS_ACCESS_KEY_ID}"
+        TF_VAR_secret_key  = "${params.AWS_SECRET_ACCESS_KEY}"
+    }
+    options {
+        // Abort pipeline if it hangs for more than 1 hour
+        timeout(time: 1, unit: 'HOURS')
     }
     stages {
-        stage ('Terraform Init') {
+        stage('Terraform Init') {
             steps {
-                sh """
-                export TF_VAR_region='${env.region}'
-                export TF_VAR_access_key='${env.access_key}'
-                export TF_VAR_secret_key='${env.secret_key}'
-                terraform init
-                """
+                script {
+                    withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh '''
+                        terraform init
+                        '''
+                    }
+                }
             }
         }
-        stage ('Terraform Plan') {
+        stage('Terraform Plan') {
             steps {
-                sh """
-                export TF_VAR_region='${env.region}'
-                export TF_VAR_access_key='${env.access_key}'
-                export TF_VAR_secret_key='${env.secret_key}'
-                terraform plan -var-file=terraform-dev.tfvars
-                """
+                script {
+                    withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh '''
+                        terraform plan -var-file=terraform-dev.tfvars
+                        '''
+                    }
+                }
             }
         }
-        stage ('Terraform Apply') {
+        stage('Terraform Apply') {
             steps {
-                sh """
-                export TF_VAR_region='${env.region}'
-                export TF_VAR_access_key='${env.access_key}'
-                export TF_VAR_secret_key='${env.secret_key}'
-                terraform apply -var-file=terraform-dev.tfvars -auto-approve
-                """
+                script {
+                    withCredentials([string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh '''
+                        terraform apply -var-file=terraform-dev.tfvars -auto-approve
+                        '''
+                    }
+                }
             }
+        }
+    }
+    post {
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
+        }
+        success {
+            echo 'Terraform actions completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs for details.'
         }
     }
 }

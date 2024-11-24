@@ -1,25 +1,32 @@
-# CREATE AND ASSIGN ROUTE TABLES
+# Create and Assign Route Tables
 
-resource "aws_route_table" "route-table-public" {
-  vpc_id = data.aws_vpc.existing_vpc.id
+# Public Route Table
+resource "aws_route_table" "public" {
+  vpc_id = var.vpc_id
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.gw.id
   }
+
   tags = {
     Name = "${lower(var.vendor)}-${lower(var.environment)}-rt-public"
   }
 }
 
-resource "aws_route_table" "route-table-private" {
-  vpc_id = data.aws_vpc.existing_vpc.id
+# Private Route Table
+resource "aws_route_table" "private" {
+  vpc_id = var.vpc_id
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_nat_gateway.natgw.id
   }
+
   tags = {
     Name = "${lower(var.vendor)}-${lower(var.environment)}-rt-private"
   }
+
   lifecycle {
     ignore_changes = [
       route,
@@ -27,12 +34,14 @@ resource "aws_route_table" "route-table-private" {
   }
 }
 
-resource "aws_route_table_association" "route-table-public-association-1" {
-  subnet_id      = aws_subnet.public-subnet-1.id
-  route_table_id = aws_route_table.route-table-public.id
+# Associate Public Route Table with Subnet
+resource "aws_route_table_association" "public_association" {
+  subnet_id      = var.public_subnet_id
+  route_table_id = aws_route_table.public.id
 }
 
-resource "aws_route_table_association" "route-table-private-association-1" {
-  subnet_id      = aws_subnet.private-subnet-1.id
-  route_table_id = aws_route_table.route-table-private.id
+# Associate Private Route Table with Subnet
+resource "aws_route_table_association" "private_association" {
+  subnet_id      = var.private_subnet_id
+  route_table_id = aws_route_table.private.id
 }
